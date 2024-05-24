@@ -82,7 +82,9 @@ public class DiscordIdentityProvider extends AbstractOAuth2IdentityProvider<Disc
     @Override
     protected BrokeredIdentityContext extractIdentityFromProfile(EventBuilder event, JsonNode profile)
     {
-        BrokeredIdentityContext user = new BrokeredIdentityContext(getJsonProperty(profile, "id"));
+        String id = getJsonProperty(profile, "id");
+
+        BrokeredIdentityContext user = new BrokeredIdentityContext(id);
 
         String username = getJsonProperty(profile, "username");
         String discriminator = getJsonProperty(profile, "discriminator");
@@ -93,6 +95,15 @@ public class DiscordIdentityProvider extends AbstractOAuth2IdentityProvider<Disc
         }
 
         user.setUsername(username);
+
+        String avatar = getJsonProperty(profile, "avatar");
+        String picture = "https://cdn.discordapp.com/avatars/" + id + "/" + avatar + ((avatar != null && avatar.startsWith("a_")) ? ".gif" : ".png");
+
+        if (avatar != null)
+        {
+            user.setUserAttribute("picture", picture);
+        }
+
         user.setEmail(getJsonProperty(profile, "email"));
         user.setIdpConfig(getConfig());
         user.setIdp(this);
