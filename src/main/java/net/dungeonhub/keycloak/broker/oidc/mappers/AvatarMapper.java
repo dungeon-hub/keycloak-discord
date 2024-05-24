@@ -1,9 +1,6 @@
 package net.dungeonhub.keycloak.broker.oidc.mappers;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.vdurmont.emoji.EmojiParser;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.oidc.KeycloakOIDCIdentityProviderFactory;
 import org.keycloak.broker.oidc.OIDCIdentityProvider;
@@ -18,11 +15,9 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.social.discord.DiscordIdentityProviderFactory;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
-public class GuildsMapper extends AbstractClaimMapper
+public class AvatarMapper extends AbstractClaimMapper
 {
     private static final Logger logger = Logger.getLogger(GuildsMapper.class);
 
@@ -42,19 +37,19 @@ public class GuildsMapper extends AbstractClaimMapper
     @Override
     public String getDisplayCategory()
     {
-        return "Guild Importer";
+        return "Avatar Importer";
     }
 
     @Override
     public String getDisplayType()
     {
-        return "Discord Guild Importer";
+        return "Discord Avatar Importer";
     }
 
     @Override
     public String getHelpText()
     {
-        return "If possible, import the users guilds into a field.";
+        return "If possible, import the avatar into the attribute \"picture\".";
     }
 
     @Override
@@ -74,47 +69,27 @@ public class GuildsMapper extends AbstractClaimMapper
     {
         super.importNewUser(session, realm, user, mapperModel, context);
 
-        this.syncGuilds(realm, user, mapperModel, context);
+        this.syncAvatar(realm, user, mapperModel, context);
     }
 
     @Override
     public void updateBrokeredUser(KeycloakSession session, RealmModel realm, UserModel user, IdentityProviderMapperModel mapperModel, BrokeredIdentityContext context)
     {
-        this.syncGuilds(realm, user, mapperModel, context);
+        this.syncAvatar(realm, user, mapperModel, context);
     }
 
-    private void syncGuilds(RealmModel realm, UserModel user, IdentityProviderMapperModel mapperModel, BrokeredIdentityContext context)
+    private void syncAvatar(RealmModel realm, UserModel user, IdentityProviderMapperModel mapperModel, BrokeredIdentityContext context)
     {
         JsonNode profileJsonNode = (JsonNode) context.getContextData().get(OIDCIdentityProvider.USER_INFO);
-        JsonNode guilds = profileJsonNode.get("discord-guilds");
 
-        List<String> attributes = new ArrayList<>();
+        String id = profileJsonNode.get("id").asText();
 
-        for (Iterator<JsonNode> it = guilds.elements(); it.hasNext(); )
+        String avatar = profileJsonNode.get("avatar").asText();
+        String picture = "https://cdn.discordapp.com/avatars/" + id + "/" + avatar + ((avatar != null && avatar.startsWith("a_")) ? ".gif" : ".png");
+
+        if (avatar != null)
         {
-            JsonNode subNode = it.next();
-
-            ObjectNode guildObject = JsonNodeFactory.instance.objectNode();
-            guildObject.set("id", subNode.get("id"));
-            guildObject.set("icon", subNode.get("icon"));
-            guildObject.set("name", JsonNodeFactory.instance.textNode(EmojiParser.parseToAliases(subNode.get("name").asText())));
-
-            attributes.add(guildObject.toString());
+            user.setSingleAttribute("picture", picture);
         }
-
-        user.setAttribute("discord-guild", attributes);
-
-        List<String> permissions = user.getAttributes().getOrDefault("permission", new ArrayList<>());
-        for (Iterator<JsonNode> it = guilds.elements(); it.hasNext(); )
-        {
-            JsonNode subNode = it.next();
-
-            if (subNode.get("owner").asBoolean() && !permissions.contains("server_" + subNode.get("id").asText()))
-            {
-                permissions.add("server_" + subNode.get("id").asText());
-            }
-        }
-
-        user.setAttribute("permission", permissions);
     }
 }
