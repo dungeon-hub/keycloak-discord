@@ -1,3 +1,4 @@
 org.keycloak.social.discord.DiscordUserAttributeMapper
 br.com.luizcarlosvianamelo.keycloak.broker.oidc.mappers.ClaimToGroupMapper
 net.dungeonhub.keycloak.broker.oidc.mappers.GuildsMapper
+net.dungeonhub.keycloak.broker.oidc.mappers.AvatarMapper
