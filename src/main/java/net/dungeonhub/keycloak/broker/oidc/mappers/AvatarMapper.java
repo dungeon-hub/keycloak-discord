@@ -61,7 +61,7 @@ public class AvatarMapper extends AbstractClaimMapper
     @Override
     public String getId()
     {
-        return "oidc-guilds-idp-mapper";
+        return "oidc-avatar-idp-mapper";
     }
 
     @Override
