@@ -105,7 +105,6 @@ public class DiscordIdentityProvider extends AbstractOAuth2IdentityProvider<Disc
         }
 
         user.setEmail(getJsonProperty(profile, "email"));
-        user.setIdpConfig(getConfig());
         user.setIdp(this);
 
         AbstractJsonUserAttributeMapper.storeUserProfileForMapper(user, profile, getConfig().getAlias());
@@ -159,6 +158,9 @@ public class DiscordIdentityProvider extends AbstractOAuth2IdentityProvider<Disc
                 try
                 {
                     guildMember = SimpleHttp.doGet(String.format(GUILD_MEMBER_URL, guild), session).header("Authorization", "Bearer " + accessToken).asJson();
+                    if (guildMember.has("joined_at") && mappedRoles.get(guild).containsKey(guild) ) {
+                        groups.add(mappedRoles.get(guild).get(guild));
+                    }
                     for (JsonNode role : guildMember.get("roles"))
                     {
                         String roleString = role.textValue();
