@@ -11,6 +11,7 @@ import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.models.*;
 import org.keycloak.provider.ProviderConfigProperty;
 
+import org.keycloak.social.discord.DiscordIdentityProviderConfig;
 import org.keycloak.social.discord.DiscordIdentityProviderFactory;
 
 import java.util.*;
@@ -44,6 +45,8 @@ public class ClaimToGroupMapper extends AbstractClaimMapper {
 
     private static final String CREATE_GROUPS = "create_groups";
 
+    private static final String ONLY_USE_MAPPED_GROUPS = "only_use_mapped_groups";
+
     static {
         ProviderConfigProperty property;
 
@@ -70,6 +73,14 @@ public class ClaimToGroupMapper extends AbstractClaimMapper {
         property.setLabel("Create groups if not exists");
         property.setHelpText("Indicates if missing groups must be created in the realms. Otherwise, they will " +
                 "be ignored.");
+
+        property.setType(ProviderConfigProperty.BOOLEAN_TYPE);
+        CONFIG_PROPERTIES.add(property);
+
+        property = new ProviderConfigProperty();
+        property.setName(ONLY_USE_MAPPED_GROUPS);
+        property.setLabel("Only use mapped groups");
+        property.setHelpText("If this option is enabled, only the groups mapped in the IdP will be changed, otherwise all groups will be overwritten.");
 
         property.setType(ProviderConfigProperty.BOOLEAN_TYPE);
         CONFIG_PROPERTIES.add(property);
@@ -134,6 +145,19 @@ public class ClaimToGroupMapper extends AbstractClaimMapper {
         String groupClaimName = mapperModel.getConfig().get(CLAIM);
         String containsText = mapperModel.getConfig().get(CONTAINS_TEXT);
         boolean createGroups = Boolean.parseBoolean(mapperModel.getConfig().get(CREATE_GROUPS));
+        boolean onlyUseMappedGroups = Boolean.parseBoolean(mapperModel.getConfig().get(ONLY_USE_MAPPED_GROUPS));
+
+        List<String> groupsToUse;
+        if(onlyUseMappedGroups && context.getIdpConfig() instanceof DiscordIdentityProviderConfig providerConfig) {
+            groupsToUse = providerConfig.getMappedRolesAsMap()
+                    .entrySet().stream()
+                    .flatMap(entry -> entry.getValue().entrySet().stream())
+                    .map(Map.Entry::getValue)
+                    .distinct()
+                    .toList();
+        } else {
+            groupsToUse = Collections.emptyList();
+        }
 
         // do nothing if no claim was adjusted
         if (isEmpty(groupClaimName))
@@ -166,6 +190,7 @@ public class ClaimToGroupMapper extends AbstractClaimMapper {
         // get user current groups
         Set<GroupModel> currentGroups = user.getGroupsStream()
                 .filter(g -> isEmpty(containsText) || g.getName().contains(containsText))
+                .filter(g -> groupsToUse.isEmpty() || groupsToUse.contains(g.getName()))
                 .collect(Collectors.toSet());
 
         logger.debugf("Realm [%s], IdP [%s]: current groups for user [%s]: %s",
