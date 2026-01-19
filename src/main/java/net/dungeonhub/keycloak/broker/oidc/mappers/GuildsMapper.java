@@ -105,16 +105,23 @@ public class GuildsMapper extends AbstractClaimMapper
         user.setAttribute("discord-guild", attributes);
 
         List<String> permissions = user.getAttributes().getOrDefault("permission", new ArrayList<>());
+        permissions.removeIf(s -> s.startsWith("server_"));
         for (Iterator<JsonNode> it = guilds.elements(); it.hasNext(); )
         {
             JsonNode subNode = it.next();
 
-            if (subNode.get("owner").asBoolean() && !permissions.contains("server_" + subNode.get("id").asText()))
+            if (subNode.get("owner").asBoolean() || hasAdminPerms(subNode))
             {
                 permissions.add("server_" + subNode.get("id").asText());
             }
         }
 
         user.setAttribute("permission", permissions);
+    }
+
+    private boolean hasAdminPerms(JsonNode subNode) {
+        long permissions = subNode.get("permissions").asLong();
+
+        return (permissions & 0x8) == 0x8;
     }
 }
